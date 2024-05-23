@@ -1,0 +1,88 @@
+/* ------- CHANGE VARIABLES ------- */
+
+const parentFolderId = "1nl-kHSYOb6LnqG50K5E-xOfI2Ays7EHM"; // Parent folder ID (starting folder)
+const currentFolderName = "CAFM TY 1"; // CAFM 001 folder name (to change)
+const newFolderName = "CAFM TY 2"; // CAMF 001 new folder name
+
+let counter1 = 0;
+let counter2 = 0;
+let foldersToRename = [];
+let foldersRenamed = [];
+
+class Folder {
+  constructor(id, name, link) {
+    this.id = id;
+    this.name = name;
+    this.link = link;
+  }
+}
+
+function main() {
+  const reset = true; // Set to true to reset saved data
+  const scriptProperties = PropertiesService.getScriptProperties();
+  
+  if (reset) {
+    scriptProperties.deleteProperty('lastRenamedFolderId');
+    scriptProperties.deleteProperty('counter2');
+    console.log("Resetting saved data.");
+  }
+
+  const lastRenamedFolderId = scriptProperties.getProperty('lastRenamedFolderId');
+  const lastCounter2 = scriptProperties.getProperty('counter2');
+  
+  if (lastRenamedFolderId) {
+    console.log(`Resuming from folder: ${lastRenamedFolderId}`);
+    console.log(`Resuming from counter2: ${lastCounter2}`);
+    counter2 = parseInt(lastCounter2); // Retrieve last counter2 value
+    const foldersToRename = getFolders(parentFolderId, currentFolderName, lastRenamedFolderId);
+  } else {
+    const foldersToRename = getFolders(parentFolderId, currentFolderName);
+  }
+}
+
+function getFolders(startFolder, searchFolder, lastRenamedFolderId = null) {
+  const folder = DriveApp.getFolderById(startFolder);
+  const subFolders = folder.getFolders();
+  const folderName = folder.getName().toUpperCase();
+
+  if (folderName.includes(currentFolderName.toUpperCase())) {
+    const folderObject = new Folder(folder.getId(), folder.getName(), folder.getUrl());
+    foldersToRename.push(folderObject);
+    // counter1++;
+    // console.log("folders to rename: " + counter1);
+
+    if (lastRenamedFolderId === folder.getId()) {
+      console.log(`Skipping to folder: ${folder.getId()}`);
+      return foldersToRename;
+    }
+
+    renameFolder(folderObject, newFolderName);
+  }
+
+  while (subFolders.hasNext()) {
+    const subfolder = subFolders.next().getId();
+    getFolders(subfolder, searchFolder, lastRenamedFolderId);
+  }
+  return foldersToRename;
+}
+
+function renameFolder(folder, newName) {
+    const oldName = folder.name;
+    const folderObject  = DriveApp.getFolderById(folder.id);
+    const newFolder = folder.name.replace(folder.name, newName); 
+    folderObject.setName(newFolder);
+    const newFolderObject = new Folder(folder.id, newFolder, folder.link);
+    foldersRenamed.push(newFolderObject)
+
+    counter2++;
+    console.log('Folders renamed: ' + counter2  + " link: " + folder.link)
+    console.log(`Renamed folder: ${oldName} to ${newName}`);
+  
+    // Store last renamed folder ID and counter2 in properties
+    const scriptProperties = PropertiesService.getScriptProperties();
+    scriptProperties.setProperty('lastRenamedFolderId', folder.id);
+    scriptProperties.setProperty('counter2', counter2.toString());
+
+  return foldersRenamed;
+}
+
